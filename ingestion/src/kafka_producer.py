@@ -253,7 +253,7 @@ class EcommerceIngestionService:
         # Load configuration from environment
         self.kafka_servers = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:29092')
         self.kafka_topic = os.getenv('KAFKA_TOPIC', 'raw_events')
-        self.source_file = os.getenv('SOURCE_FILE', '/app/data/electronics.csv')
+        self.source_file = os.getenv('SOURCE_FILE', '/app/data/events.csv')
         self.batch_size = int(os.getenv('BATCH_SIZE', '1000'))
         self.max_events = int(os.getenv('MAX_EVENTS', '0'))  # 0 = no limit
         
