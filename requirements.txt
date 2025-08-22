@@ -7,8 +7,12 @@ pandas==2.3.1
 numpy==2.3.1
 pyarrow==16.1.0
 
+# Spark processing (required by processing/data_processor.py)
+pyspark==3.5.0
+
 # Storage and API clients
 minio==7.2.7
+boto3==1.34.0
 requests==2.32.4
 
 # Utilities

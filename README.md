@@ -18,7 +18,16 @@ A scalable data pipeline that processes e-commerce events and generates customer
 
 ## 🖥️ Data Setup
 
-- You can download the data from https://www.kaggle.com/datasets/mkechinov/ecommerce-events-history-in-electronics-store
+1. **Download the dataset:**
+   - Visit: https://www.kaggle.com/datasets/mkechinov/ecommerce-events-history-in-electronics-store  
+   - Download the CSV file
+   - Place it in the `data/` folder as `events.csv`
+
+2. **Validate your data (optional):**
+   ```bash
+   # Ensure CSV has required columns (user_id, event_type, product_id, price)
+   python scripts/validate_data.py
+   ```
 
 ---
 
@@ -68,7 +77,7 @@ python3 -m venv venv
 source venv/bin/activate
 
 # Install required packages
-pip install kafka-python==2.2.15 elasticsearch==8.19.0 pandas==2.3.1 numpy==2.3.1 requests==2.32.4 pyarrow==16.1.0 minio==7.2.7
+pip install -r requirements.txt
 ```
 
 ### Step 4: Start Pipeline
@@ -88,19 +97,41 @@ docker compose ps
 
 ## 🎯 Usage
 
-### Run Processing Pipeline
+### Data Ingestion
 ```bash
 # Activate virtual environment
 source venv/bin/activate
 
-# Process data
+# Ingest data to Kafka (streams CSV events to Kafka)
+python ingestion/kafka_producer.py
+
+# Monitor ingestion progress - you'll see real-time statistics
+```
+
+### Data Processing & Analytics
+```bash
+# Process streamed data (consumes from Kafka, processes with Spark)
 python processing/run_complete_pipeline.py
 
-# View analytics
+# Generate business analytics and insights
 python analytics/advanced_analytics.py
 
-# Monitor system
+# Monitor system health
 python monitoring/pipeline_monitor.py
+```
+
+### Complete Pipeline Workflow
+```bash
+# 1. Start services
+docker compose up -d
+
+# 2. Activate Python environment
+source venv/bin/activate
+
+# 3. Run complete pipeline
+python ingestion/kafka_producer.py        # Stream data to Kafka
+python processing/run_complete_pipeline.py   # Process data with Spark
+python analytics/advanced_analytics.py       # Generate business insights
 ```
 
 ### Access Web Interfaces
