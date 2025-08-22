@@ -108,13 +108,10 @@ python ingestion/kafka_producer.py
 # Monitor ingestion progress - you'll see real-time statistics
 ```
 
-### Data Processing & Analytics
+### Data Processing
 ```bash
 # Process streamed data (consumes from Kafka, processes with Spark)
-python processing/run_complete_pipeline.py
-
-# Generate business analytics and insights
-python analytics/advanced_analytics.py
+python processing/data_processor.py
 
 # Monitor system health
 python monitoring/pipeline_monitor.py
@@ -130,8 +127,8 @@ source venv/bin/activate
 
 # 3. Run complete pipeline
 python ingestion/kafka_producer.py        # Stream data to Kafka
-python processing/run_complete_pipeline.py   # Process data with Spark
-python analytics/advanced_analytics.py       # Generate business insights
+python processing/data_processor.py   # Process data with Spark
+
 ```
 
 ### Access Web Interfaces
