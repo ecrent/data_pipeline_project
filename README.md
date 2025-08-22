@@ -25,8 +25,11 @@ A scalable data pipeline that processes e-commerce events and generates customer
 
 2. **Validate your data (optional):**
    ```bash
-   # Ensure CSV has required columns (user_id, event_type, product_id, price)
-   python scripts/validate_data.py
+   # Check if data file exists and preview structure
+   ls -la data/
+   head -5 data/events.csv
+   
+   # Verify CSV has required columns: event_time, event_type, product_id, price, user_id
    ```
 
 ---
@@ -68,9 +71,9 @@ sudo sysctl -p
 # Install Python dependencies
 sudo apt install python3 python3-pip python3-venv git curl -y
 
-# Clone project
-git clone https://github.com/ecrent/data_pipeline_project.git
-cd data_pipeline_project
+# If you haven't cloned the project yet:
+# git clone <your-repository-url>
+# cd data_pipeline_project
 
 # Create Python virtual environment
 python3 -m venv venv
@@ -119,22 +122,34 @@ python monitoring/pipeline_monitor.py
 
 ### Complete Pipeline Workflow
 ```bash
-# 1. Start services
-docker compose up -d
+# 1. Start all services and wait for initialization
+docker compose up -d && sleep 120
 
-# 2. Activate Python environment
+# 2. Activate Python environment  
 source venv/bin/activate
 
-# 3. Run complete pipeline
-python ingestion/kafka_producer.py        # Stream data to Kafka
-python processing/data_processor.py   # Process data with Spark
+# 3. Run the complete data pipeline (execute in sequence)
+python ingestion/kafka_producer.py     # Stream CSV data to Kafka topics
+python processing/data_processor.py    # Process with Spark, store in MinIO + Elasticsearch
 
+# 4. Monitor the pipeline
+python monitoring/pipeline_monitor.py  # Check system health and metrics
 ```
 
 ### Access Web Interfaces
-- **Spark Master UI:** http://localhost:8080
-- **Kibana Dashboard:** http://localhost:5601  
-- **MinIO Console:** http://localhost:9001 (login: `minioadmin`/`minioadmin123`)
+- **Spark Master UI:** http://localhost:8080 (Monitor cluster and job execution)
+- **Kibana Dashboard:** http://localhost:5601 (Customer analytics and visualizations)
+- **MinIO Console:** http://localhost:9001 (Data lake management - login: `minioadmin`/`minioadmin123`)
+- **Elasticsearch API:** http://localhost:9200 (Direct database queries)
+
+### Verify Pipeline Success
+```bash
+# Check if data was processed successfully
+curl -s "http://localhost:9200/customer_profiles/_count" | jq '.'
+
+# View sample customer profile
+curl -s "http://localhost:9200/customer_profiles/_search?size=1" | jq '.hits.hits[0]._source'
+```
 
 ---
 
@@ -156,12 +171,56 @@ docker compose up -d --scale spark-worker=3
 
 ## 🔧 Service Ports
 
-| Service | Port | Description |
-|---------|------|-------------|
-| Kibana | 5601 | Analytics dashboard |
-| Spark Master | 8080 | Cluster monitoring |
-| MinIO Console | 9001 | Storage management |
-| Elasticsearch | 9200 | Search API |
-| Kafka | 9092 | Message streaming |
+| Service | Port | Description | Health Check |
+|---------|------|-------------|--------------|
+| Kibana | 5601 | Analytics dashboard | http://localhost:5601 |
+| Spark Master | 8080 | Cluster monitoring | http://localhost:8080 |
+| MinIO Console | 9001 | Storage management | http://localhost:9001 |
+| Elasticsearch | 9200 | Search API | http://localhost:9200/_cluster/health |
+| Kafka | 9092 | Message streaming | Internal (docker network) |
+| Zookeeper | 2181 | Kafka coordination | Internal (docker network) |
+
+---
+
+## 🆘 Troubleshooting
+
+### Common Issues:
+
+**Services not starting:**
+```bash
+# Check service logs
+docker compose logs -f elasticsearch
+docker compose logs -f kafka
+
+# Restart specific service
+docker compose restart elasticsearch
+```
+
+**Out of memory errors:**
+```bash
+# Check system resources
+free -h
+docker stats
+
+# Increase Elasticsearch memory (if needed)
+export ES_JAVA_OPTS="-Xms2g -Xmx2g"
+docker compose up -d elasticsearch
+```
+
+**Data file not found:**
+```bash
+# Ensure data file exists
+ls -la data/events.csv
+
+# Check file format
+head -5 data/events.csv
+```
+
+**Python import errors:**
+```bash
+# Reinstall dependencies
+source venv/bin/activate
+pip install --upgrade -r requirements.txt
+```
 
 ---
