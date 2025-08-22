@@ -1,0 +1,22 @@
+version: '3.8'
+
+# GitHub Codespaces Override Configuration
+# This file provides Codespaces-specific settings
+
+services:
+  kafka:
+    environment:
+      # Override Kafka listeners for Codespaces
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://kafka:9092
+      # Additional Codespaces-specific config can go here
+      
+  kibana:
+    environment:
+      # Ensure Kibana works behind Codespaces proxy
+      - SERVER_BASEPATH=/
+      - SERVER_REWRITEBASEPATH=false
+      
+  minio:
+    environment:
+      # MinIO console should work with Codespaces forwarding
+      - MINIO_BROWSER_REDIRECT=off

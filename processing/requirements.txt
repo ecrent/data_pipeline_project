@@ -1,0 +1,11 @@
+# Spark Processing Application Requirements
+# For consuming Kafka, processing data, and storing to MinIO + Elasticsearch
+
+pyspark>=3.4.0
+kafka-python>=2.0.2
+pandas>=2.0.0
+numpy>=1.24.0
+elasticsearch>=8.9.0
+boto3>=1.28.0  # For MinIO S3 integration
+pyarrow>=13.0.0  # For Parquet format
+python-json-logger>=2.0.0

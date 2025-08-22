@@ -1,0 +1,6 @@
+# Kafka Producer Service Requirements
+# For reading CSV data and publishing to Kafka
+
+kafka-python>=2.0.2
+pandas>=2.0.0
+numpy>=1.24.0

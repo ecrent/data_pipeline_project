@@ -1,0 +1,319 @@
+version: '3.8'
+
+networks:
+  data-pipeline-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  # Kafka and Zookeeper persistence
+  zookeeper-data:
+  kafka-data:
+  
+  # MinIO data lake storage
+  minio-data:
+  
+  # Elasticsearch data persistence
+  elasticsearch-data:
+  
+  # Spark application logs and temporary files
+  spark-logs:
+  
+  # Source data volume (for mounting local data files)
+  source-data:
+
+services:
+  # =============================================================================
+  # ZOOKEEPER - Kafka Coordination Service
+  # =============================================================================
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    hostname: zookeeper
+    container_name: pipeline-zookeeper
+    networks:
+      - data-pipeline-network
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_SYNC_LIMIT: 2
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  # =============================================================================
+  # KAFKA - Message Streaming Platform
+  # =============================================================================
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    hostname: kafka
+    container_name: pipeline-kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    networks:
+      - data-pipeline-network
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_DELETE_TOPIC_ENABLE: 'true'
+      # Performance tuning
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_RETENTION_BYTES: 1073741824
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:29092"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  # =============================================================================
+  # MINIO - S3-Compatible Data Lake Storage
+  # =============================================================================
+  minio:
+    image: minio/minio:RELEASE.2023-09-04T19-57-37Z
+    hostname: minio
+    container_name: pipeline-minio
+    networks:
+      - data-pipeline-network
+    ports:
+      - "9000:9000"    # API port
+      - "9001:9001"    # Console port
+    volumes:
+      - minio-data:/data
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+      MINIO_CONSOLE_ADDRESS: ":9001"
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  # =============================================================================
+  # ELASTICSEARCH - Analytics Database
+  # =============================================================================
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.9.0
+    hostname: elasticsearch
+    container_name: pipeline-elasticsearch
+    networks:
+      - data-pipeline-network
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    environment:
+      - node.name=elasticsearch
+      - cluster.name=pipeline-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+      # Security settings for development
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  # =============================================================================
+  # KIBANA - Data Visualization Dashboard
+  # =============================================================================
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.9.0
+    hostname: kibana
+    container_name: pipeline-kibana
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - data-pipeline-network
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - SERVER_NAME=kibana
+      - SERVER_HOST=0.0.0.0
+      # Development settings
+      - XPACK_SECURITY_ENABLED=false
+      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=a7a6311933d3503b89bc2dbc36572c33a6c10925682e591bffcab6911c06786d
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  # =============================================================================
+  # SPARK MASTER - Cluster Manager
+  # =============================================================================
+  spark-master:
+    image: bitnami/spark:3.4.1
+    hostname: spark-master
+    container_name: pipeline-spark-master
+    networks:
+      - data-pipeline-network
+    ports:
+      - "8080:8080"    # Spark Master Web UI
+      - "7077:7077"    # Spark Master Port
+    volumes:
+      - spark-logs:/opt/bitnami/spark/logs
+      - ./spark/apps:/opt/bitnami/spark/apps
+      - ./spark/jars:/opt/bitnami/spark/ivy:z
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+      - SPARK_USER=spark
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  # =============================================================================
+  # SPARK WORKER - Processing Node
+  # =============================================================================
+  spark-worker:
+    image: bitnami/spark:3.4.1
+    hostname: spark-worker
+    container_name: pipeline-spark-worker
+    depends_on:
+      spark-master:
+        condition: service_healthy
+    networks:
+      - data-pipeline-network
+    ports:
+      - "8081:8081"    # Spark Worker Web UI
+    volumes:
+      - spark-logs:/opt/bitnami/spark/logs
+      - ./spark/apps:/opt/bitnami/spark/apps
+      - ./spark/jars:/opt/bitnami/spark/ivy:z
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=2G
+      - SPARK_WORKER_CORES=2
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+      - SPARK_USER=spark
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  # =============================================================================
+  # DATA INGESTION SERVICE - Python CSV to Kafka Producer
+  # =============================================================================
+  ingestion-service:
+    build:
+      context: ./ingestion
+      dockerfile: Dockerfile
+    hostname: ingestion-service
+    container_name: pipeline-ingestion
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - data-pipeline-network
+    volumes:
+      - ./data:/app/data:ro  # Mount source data directory
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - KAFKA_TOPIC=raw_events
+      - SOURCE_FILE=/app/data/electronics.csv
+      - LOG_LEVEL=INFO
+    # Service will be run manually/on-demand rather than continuously
+    profiles: ["ingestion"]
+    restart: "no"
+
+  # =============================================================================
+  # SPARK PROCESSING APPLICATION
+  # =============================================================================
+  spark-processor:
+    build:
+      context: ./processing
+      dockerfile: Dockerfile
+    hostname: spark-processor
+    container_name: pipeline-spark-processor
+    depends_on:
+      kafka:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      spark-master:
+        condition: service_healthy
+    networks:
+      - data-pipeline-network
+    volumes:
+      - ./processing:/app
+      - spark-logs:/app/logs
+    environment:
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - KAFKA_TOPIC=raw_events
+      - ELASTICSEARCH_HOST=elasticsearch
+      - ELASTICSEARCH_PORT=9200
+      - ELASTICSEARCH_INDEX=customer_profiles
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin123
+      - MINIO_BUCKET=data-lake
+      - LOG_LEVEL=INFO
+    # Service will be run manually/on-demand rather than continuously
+    profiles: ["processing"]
+    restart: "no"
