@@ -26,11 +26,9 @@ logger = logging.getLogger(__name__)
 
 try:
     from elasticsearch import Elasticsearch
-    import matplotlib.pyplot as plt
-    import seaborn as sns
 except ImportError as e:
     logger.error(f"Missing dependencies: {e}")
-    logger.error("Run: pip install elasticsearch matplotlib seaborn")
+    logger.error("Run: pip install elasticsearch")
     exit(1)
 
 class AdvancedAnalytics:
