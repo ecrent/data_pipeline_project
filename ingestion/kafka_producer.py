@@ -22,6 +22,18 @@ from typing import Dict, Any, Optional, Generator
 from pathlib import Path
 import pandas as pd
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    env_file = Path(__file__).parent.parent / '.env'
+    if env_file.exists():
+        load_dotenv(env_file)
+        print(f"✅ Loaded environment from: {env_file}")
+    else:
+        print("⚠️  No .env file found, using system environment variables")
+except ImportError:
+    print("⚠️  python-dotenv not installed, using system environment variables only")
+
 try:
     from kafka import KafkaProducer
     from kafka.errors import KafkaError, KafkaTimeoutError
@@ -253,7 +265,7 @@ class EcommerceIngestionService:
         # Load configuration from environment
         self.kafka_servers = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:29092')
         self.kafka_topic = os.getenv('KAFKA_TOPIC', 'raw_events')
-        self.source_file = os.getenv('SOURCE_FILE', '/app/data/events.csv')
+        self.source_file = os.getenv('SOURCE_FILE', './data/events.csv')
         self.batch_size = int(os.getenv('BATCH_SIZE', '1000'))
         self.max_events = int(os.getenv('MAX_EVENTS', '0'))  # 0 = no limit
         

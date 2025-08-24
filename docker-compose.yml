@@ -1,5 +1,3 @@
-version: '3.8'
-
 networks:
   data-pipeline-network:
     driver: bridge
@@ -176,7 +174,7 @@ services:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
       - SERVER_NAME=kibana
       - SERVER_HOST=0.0.0.0
-      - SERVER_PUBLICBASEURL=/
+      - SERVER_PUBLICBASEURL=http://localhost:5601
       # Development settings
       - XPACK_SECURITY_ENABLED=false
       - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=a7a6311933d3503b89bc2dbc36572c33a6c10925682e591bffcab6911c06786d
@@ -248,7 +246,7 @@ services:
       - SPARK_SSL_ENABLED=no
       - SPARK_USER=spark
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081"]
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/8081"]
       interval: 30s
       timeout: 10s
       retries: 3

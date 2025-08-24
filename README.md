@@ -13,6 +13,7 @@ A scalable data pipeline that processes e-commerce events and generates customer
 - At least 8GB RAM (16GB recommended)  
 - 20GB free disk space
 - Docker and Docker Compose
+- Java 11+ (OpenJDK recommended, required for Spark processing)
 
 ---
 
@@ -68,8 +69,8 @@ sudo sysctl -p
 ### Step 3: Setup Project
 
 ```bash
-# Install Python dependencies
-sudo apt install python3 python3-pip python3-venv git curl -y
+# Install Python dependencies and Java (required for Spark)
+sudo apt install python3 python3-pip python3-venv git curl openjdk-11-jdk -y
 
 # If you haven't cloned the project yet:
 # git clone <your-repository-url>

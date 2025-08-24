@@ -22,6 +22,18 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    env_file = Path(__file__).parent.parent / '.env'
+    if env_file.exists():
+        load_dotenv(env_file)
+        print(f"✅ Loaded environment from: {env_file}")
+    else:
+        print("⚠️  No .env file found, using system environment variables")
+except ImportError:
+    print("⚠️  python-dotenv not installed, using system environment variables only")
+
 # Configure logging before importing Spark to avoid conflicts
 logging.basicConfig(
     level=os.getenv('LOG_LEVEL', 'INFO'),
@@ -158,15 +170,7 @@ class DataLakeManager:
             
             logger.info(f"💾 Archiving data to: {s3_path}")
             
-            # Configure Spark for S3
-            spark_conf = df.sql_ctx.sparkSession.sparkContext._conf
-            spark_conf.set("spark.hadoop.fs.s3a.endpoint", f"http://{self.endpoint}")
-            spark_conf.set("spark.hadoop.fs.s3a.access.key", self.access_key)
-            spark_conf.set("spark.hadoop.fs.s3a.secret.key", self.secret_key)
-            spark_conf.set("spark.hadoop.fs.s3a.path.style.access", "true")
-            spark_conf.set("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
-            
-            # Write to MinIO in Parquet format
+            # Write to MinIO in Parquet format (S3 config already set in SparkSession)
             df.write \
                 .mode('overwrite') \
                 .parquet(s3_path)
@@ -412,6 +416,12 @@ class EcommerceDataProcessor:
                 .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer") \
                 .config("spark.sql.execution.arrow.pyspark.enabled", "true") \
                 .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.1,org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.367") \
+                .config("spark.hadoop.fs.s3a.endpoint", f"http://{os.getenv('MINIO_ENDPOINT', 'localhost:9000')}") \
+                .config("spark.hadoop.fs.s3a.access.key", os.getenv('MINIO_ACCESS_KEY', 'minioadmin')) \
+                .config("spark.hadoop.fs.s3a.secret.key", os.getenv('MINIO_SECRET_KEY', 'minioadmin123')) \
+                .config("spark.hadoop.fs.s3a.path.style.access", "true") \
+                .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
+                .config("spark.hadoop.fs.s3a.aws.credentials.provider", "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider") \
                 .getOrCreate()
             
             # Set log level to reduce noise
