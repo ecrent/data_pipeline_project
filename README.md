@@ -93,21 +93,6 @@ docker compose ps
 # Stream CSV data to Kafka topics
 docker-compose --profile ingestion up ingestion-service
 
-# Monitor ingestion progress (real-time statistics)
-```
-```
-
----
-
-## 🎯 Usage
-
-### Data Ingestion
-```bash
-
-# Ingest data to Kafka (streams CSV events to Kafka)
-docker-compose --profile ingestion up ingestion-service
-
-# Monitor ingestion progress - you'll see real-time statistics
 ```
 
 ### Data Processing
@@ -117,20 +102,6 @@ docker-compose --profile processing up spark-processor
 
 # Monitor system health
 python monitoring/pipeline_monitor.py
-```
-
-### Complete Pipeline Workflow
-```bash
-# 1. Start all services and wait for initialization
-docker compose up -d && sleep 120
-
-# 2. Run the complete data pipeline (execute in sequence)
-docker-compose --profile ingestion up ingestion-service     # Stream CSV to Kafka
-docker-compose --profile processing up spark-processor      # Process with Spark → MinIO + Elasticsearch
-
-# 3. Monitor the pipeline
-source venv/bin/activate                                     # Activate virtual environment
-python monitoring/pipeline_monitor.py                       # Check system health and metrics
 ```
 
 ### Access Web Interfaces
