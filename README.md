@@ -1,26 +1,27 @@
-# 🚀 Batch Processing Data Pipeline
+# 🚀 Event Data Pipeline
 
 ## 📋 Overview
+
 A scalable data pipeline that processes e-commerce events and generates customer insights. Built with Apache Kafka, Spark, Elasticsearch, and containerized with Docker.
 
-**Architecture:** Kafka → Spark → MinIO (Data Lake) + Elasticsearch → Kibana
+**Architecture:** `Kafka → Spark → MinIO (Data Lake) + Elasticsearch → Kibana`
 
 ---
 
-## 🖥️ System Requirements
+## ⚙️ System Requirements
 
-- Ubuntu 22.04 LTS (or WSL2 with Ubuntu)
-- At least 8GB RAM (16GB recommended)  
-- 20GB free disk space
-- Docker and Docker Compose
-- Java 11+ (OpenJDK recommended, required for Spark processing)
+- **OS:** Ubuntu 22.04 LTS (or WSL2 with Ubuntu)
+- **Memory:** 8GB RAM minimum (16GB recommended)
+- **Storage:** 20GB free disk space
+- **Software:** Docker + Docker Compose
+- **Runtime:** Java 11+ (OpenJDK recommended)
 
 ---
 
-## 🖥️ Data Setup
+## � Data Setup
 
 1. **Download the dataset:**
-   - Visit: https://www.kaggle.com/datasets/mkechinov/ecommerce-events-history-in-electronics-store  
+   - Visit: [Kaggle - eCommerce Events History](https://www.kaggle.com/datasets/mkechinov/ecommerce-events-history-in-electronics-store)
    - Download the CSV file
    - Place it in the `data/` folder as `events.csv`
 
@@ -44,18 +45,7 @@ A scalable data pipeline that processes e-commerce events and generates customer
 # Update system
 sudo apt update && sudo apt upgrade -y
 
-# Install Docker
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
-
-# Add user to docker group
-sudo usermod -aG docker $USER
-
-# Install Docker Compose
-sudo apt install docker-compose-plugin -y
-
-# Logout and login again, then verify
-docker --version && docker compose version
+# Install Docker Desktop for Windows and enable WSL connection
 ```
 
 ### Step 2: Configure System
@@ -69,12 +59,8 @@ sudo sysctl -p
 ### Step 3: Setup Project
 
 ```bash
-# Install Python dependencies and Java (required for Spark)
+# Install dependencies
 sudo apt install python3 python3-pip python3-venv git curl openjdk-11-jdk -y
-
-# If you haven't cloned the project yet:
-# git clone <your-repository-url>
-# cd data_pipeline_project
 
 # Create Python virtual environment
 python3 -m venv venv
@@ -84,10 +70,11 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Step 4: Start Pipeline
+```bash
+### Step 4: Start Services
 
 ```bash
-# Start all services
+# Start all backend services
 docker compose up -d
 
 # Wait for initialization (2-3 minutes)
@@ -103,8 +90,19 @@ docker compose ps
 
 ### Data Ingestion
 ```bash
-# Activate virtual environment
-source venv/bin/activate
+# Stream CSV data to Kafka topics
+docker-compose --profile ingestion up ingestion-service
+
+# Monitor ingestion progress (real-time statistics)
+```
+```
+
+---
+
+## 🎯 Usage
+
+### Data Ingestion
+```bash
 
 # Ingest data to Kafka (streams CSV events to Kafka)
 docker-compose --profile ingestion up ingestion-service
@@ -127,42 +125,37 @@ python monitoring/pipeline_monitor.py
 docker compose up -d && sleep 120
 
 # 2. Run the complete data pipeline (execute in sequence)
-docker-compose --profile ingestion up ingestion-service     # Stream CSV data to Kafka topics
-docker-compose --profile processing up spark-processor      # Process with Spark, store in MinIO + Elasticsearch
+docker-compose --profile ingestion up ingestion-service     # Stream CSV to Kafka
+docker-compose --profile processing up spark-processor      # Process with Spark → MinIO + Elasticsearch
 
 # 3. Monitor the pipeline
-source venv/bin/activate                    # Activate Python environment
-python monitoring/pipeline_monitor.py      # Check system health and metrics
+source venv/bin/activate                                     # Activate virtual environment
+python monitoring/pipeline_monitor.py                       # Check system health and metrics
 ```
 
 ### Access Web Interfaces
-- **Spark Master UI:** http://localhost:8080 (Monitor cluster and job execution)
-- **Kibana Dashboard:** http://localhost:5601 (Customer analytics and visualizations)
-- **MinIO Console:** http://localhost:9001 (Data lake management - login: `minioadmin`/`minioadmin123`)
-- **Elasticsearch API:** http://localhost:9200 (Direct database queries)
 
-### Verify Pipeline Success
-```bash
-# Check if data was processed successfully
-curl -s "http://localhost:9200/customer_profiles/_count" | jq '.'
-
-# View sample customer profile
-curl -s "http://localhost:9200/customer_profiles/_search?size=1" | jq '.hits.hits[0]._source'
-```
+| Service | URL | Description |
+|---------|-----|-------------|
+| **Spark Master UI** | http://localhost:8080 | Monitor cluster and job execution |
+| **Kibana Dashboard** | http://localhost:5601 | Customer analytics and visualizations |
+| **MinIO Console** | http://localhost:9001 | Data lake management (login: `minioadmin`/`minioadmin123`) |
+| **Elasticsearch API** | http://localhost:9200 | Direct database queries |
 
 ---
 
 ## 📊 Service Management
 
+### Basic Operations
 ```bash
-# Start/stop services
+# Start/stop all services
 docker compose up -d
 docker compose down
 
-# View logs
+# View service logs
 docker compose logs -f [service-name]
 
-# Scale workers
+# Scale Spark workers
 docker compose up -d --scale spark-worker=3
 ```
 
@@ -183,7 +176,7 @@ docker compose up -d --scale spark-worker=3
 
 ## 🆘 Troubleshooting
 
-### Common Issues:
+### Common Issues
 
 **Services not starting:**
 ```bash
