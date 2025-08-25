@@ -299,19 +299,22 @@ class ElasticsearchManager:
             logger.info(f"🔗 Connecting to Elasticsearch at: {self.host}:{self.port}")
             
             self.client = Elasticsearch(
-                [f"http://{self.host}:{self.port}"],
-                timeout=30,
+                hosts=[f"http://{self.host}:{self.port}"],
+                request_timeout=30,
                 retry_on_timeout=True,
-                max_retries=3
+                max_retries=3,
+                verify_certs=False,
+                ssl_show_warn=False
             )
             
             # Test connection
-            if self.client.ping():
-                logger.info("✅ Elasticsearch connection established")
+            try:
+                info = self.client.info()
+                logger.info(f"✅ Elasticsearch connection established - Version: {info['version']['number']}")
                 self._create_index_if_not_exists()
                 return True
-            else:
-                logger.error("❌ Failed to ping Elasticsearch")
+            except Exception as ping_error:
+                logger.error(f"❌ Failed to connect to Elasticsearch: {ping_error}")
                 return False
                 
         except Exception as e:

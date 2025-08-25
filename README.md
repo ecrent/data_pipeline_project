@@ -107,7 +107,7 @@ docker compose ps
 source venv/bin/activate
 
 # Ingest data to Kafka (streams CSV events to Kafka)
-python ingestion/kafka_producer.py
+docker-compose --profile ingestion up ingestion-service
 
 # Monitor ingestion progress - you'll see real-time statistics
 ```
@@ -115,7 +115,7 @@ python ingestion/kafka_producer.py
 ### Data Processing
 ```bash
 # Process streamed data (consumes from Kafka, processes with Spark)
-python processing/data_processor.py
+docker-compose --profile processing up spark-processor
 
 # Monitor system health
 python monitoring/pipeline_monitor.py
@@ -126,15 +126,13 @@ python monitoring/pipeline_monitor.py
 # 1. Start all services and wait for initialization
 docker compose up -d && sleep 120
 
-# 2. Activate Python environment  
-source venv/bin/activate
+# 2. Run the complete data pipeline (execute in sequence)
+docker-compose --profile ingestion up ingestion-service     # Stream CSV data to Kafka topics
+docker-compose --profile processing up spark-processor      # Process with Spark, store in MinIO + Elasticsearch
 
-# 3. Run the complete data pipeline (execute in sequence)
-python ingestion/kafka_producer.py     # Stream CSV data to Kafka topics
-python processing/data_processor.py    # Process with Spark, store in MinIO + Elasticsearch
-
-# 4. Monitor the pipeline
-python monitoring/pipeline_monitor.py  # Check system health and metrics
+# 3. Monitor the pipeline
+source venv/bin/activate                    # Activate Python environment
+python monitoring/pipeline_monitor.py      # Check system health and metrics
 ```
 
 ### Access Web Interfaces

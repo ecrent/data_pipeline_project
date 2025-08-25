@@ -19,6 +19,9 @@ volumes:
   # Spark application logs and temporary files
   spark-logs:
   
+  # JAR cache to avoid re-downloading large files (350MB+ AWS SDK)
+  jar-cache:
+  
   # Source data volume (for mounting local data files)
   source-data:
 
@@ -301,6 +304,7 @@ services:
     volumes:
       - ./processing:/app
       - spark-logs:/app/logs
+      - jar-cache:/opt/bitnami/spark/.ivy2
     environment:
       - SPARK_MASTER_URL=spark://spark-master:7077
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092

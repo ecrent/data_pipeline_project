@@ -12,8 +12,8 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy source code
-COPY src/ ./src/
+# Copy source code (current structure has files in root)
+COPY kafka_producer.py .
 
 # Create data directory for mounting
 RUN mkdir -p /app/data
@@ -22,4 +22,4 @@ RUN mkdir -p /app/data
 ENV PYTHONPATH=/app
 
 # Default command
-CMD ["python", "src/kafka_producer.py"]
+CMD ["python", "kafka_producer.py"]
